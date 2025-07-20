@@ -1,0 +1,81 @@
+#define BLYNK_TEMPLATE_ID “TMPL3JPEKLiwr”
+#define BLYNK_TEMPLATE_NAME “project”
+#define BLYNK_AUTH_TOKEN “DKpfZCFRtbvyYjwOdTt130aKP0xOefVh”
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
+#include <DHT.h>
+#define DHTPIN 23
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+#define TRIG_PIN 32
+#define ECHO_PIN 33
+#define IR_PIN 25
+Int IN1 = 26;
+Int IN2 = 27;
+Char auth[] = “DKpfZCFRtbvyYjwOdTt130aKP0xOefVh”;
+Char ssid[] = “Hi”;
+Char pass[] = “12345678”;
+Void setup() {
+ Serial.begin(9600);
+ Blynk.begin(auth, ssid, pass);
+
+ Dht.begin();
+ pinMode(TRIG_PIN, OUTPUT);
+ pinMode(ECHO_PIN, INPUT);
+ pinMode(IR_PIN, INPUT);
+ pinMode(IN1, OUTPUT);
+ pinMode(IN2, OUTPUT);
+}
+Void loop() {
+ Blynk.run();
+ Float humidity = dht.readHumidity();
+ Float temp = dht.readTemperature();
+ If (isnan(humidity) || isnan(temp)) {
+ Serial.println(“Failed to read from DHT sensor!”);
+ Return;
+ }
+ Blynk.virtualWrite(V1, temp);
+ Blynk.virtualWrite(V2, humidity);
+ measureTrashlevel();
+ countVehicles();
+ delay(1000); // Adjust based on your needs
+}
+Void measureTrashlevel() {
+ Long duration, distance;
+ digitalWrite(TRIG_PIN, LOW);
+ delayMicroseconds(2);
+ digitalWrite(TRIG_PIN, HIGH);
+ delayMicroseconds(10);
+ digitalWrite(TRIG_PIN, LOW);
+ duration = pulseIn(ECHO_PIN, HIGH);
+ distance = (duration/2) / 29.1;
+ if (distance < 5) { // Assuming 10 cm as the threshold for “full”
+ Blynk.virtualWrite(V3, “Full”);
+ } else {
+ Blynk.virtualWrite(V3, “Not Full”);
+ }
+ Delay(1000); // Check every second
+}
+Void countVehicles() {
+ Static unsigned long lastMillis = 0;
+ Static int vehicleCount = 0;
+ If (digitalRead(IR_PIN) == LOW) { // Assuming the IR sensor goes LOW when a vehicle
+passes
+ vehicleCount++;
+ delay(200); // Debounce delay
+ }
+ If (millis() – lastMillis > 60000) { // Reset count every minute
+ Blynk.virtualWrite(V4, vehicleCount);
+ vehicleCount = 0;
+ lastMillis = millis();
+ }
+}
+BLYNK_WRITE(V5) { //move forward
+ digitalWrite(IN2, param.asInt());
+
+}
+BLYNK_WRITE(V6) { //move backward
+ digitalWrite(IN1, param.asInt());
+
+}
